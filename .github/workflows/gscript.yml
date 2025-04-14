@@ -1,74 +1,83 @@
-name: Label & comment issues
+name: Auto Comment on Issue and PR
 
 on:
   issues:
-    types:
-      - opened
-      - reopened
-      - closed
+    types: [opened, reopened, closed]
   pull_request:
-    types:
-      - opened
+    types: [opened]
 
 jobs:
+  # 处理 issue 的标签和评论
   label_issues:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      pull-requests: write
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
     steps:
-      - name: Attach label to issues
+      - name: Attach labels to issue
         uses: actions/github-script@v6
         with:
           script: |
-            if (context.payload.action === 'opened' || context.payload.action === 'reopened') {
-              github.rest.issues.addLabels({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: ["issue", "fix"]
-              })
-            }
-
-      # This step should only comment when the issue is opened or reopened.
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["issue", "fix"]
+            })
       - name: Comment on new issue
-        if: github.event.action == 'opened' || github.event.action == 'reopened' # This condition ensures that the comment only happens when the issue is opened or reopened.
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
             Thanks for opening this issue! We'll take a look as soon as possible.
 
-  comment_on_close:
+  # 关闭 issue 时自动评论
+  comment-on-issue-closed:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    if: github.event.action == 'closed'
     steps:
       - name: Comment on closed issue
-        if: github.event.action == 'closed'  # This condition ensures that the comment happens only when the issue is closed.
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            The issue is now resolved. Thanks for your patience!
-
-  welcome_first_pr:
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if it's the first PR
         uses: actions/github-script@v6
         with:
           script: |
-            const prNumber = context.payload.pull_request.number;
-            const prs = await github.rest.pulls.list({
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              body: "The issue is now resolved."
             });
 
-            if (prs.data.length === 1) {
-              github.rest.issues.createComment({
-                issue_number: prNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: "🎉 Congratulations on opening your first pull request! We appreciate your contribution."
-              });
-            }
+  # 首次提交 PR 时祝贺用户
+  congratulate-first-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check if first PR
+        uses: actions/github-script@v6
+        id: check-first-pr
+        with:
+          script: |
+            // 获取当前用户的所有 PR 列表
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              creator: github.event.pull_request.user.login
+            });
+            // 如果 PR 数量为 1，说明是首次提交
+            return prs.data.length === 1;
+
+      - name: Congratulate on first PR
+        if: steps.check-first-pr.outputs.result == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "🎉 Congratulations on your first pull request!"
+            });
