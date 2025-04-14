@@ -6,6 +6,10 @@ on:
   pull_request:
     types: [opened]
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   comment-on-close:
     if: github.event_name == 'issues'
@@ -34,3 +38,4 @@ jobs:
               repo: context.repo.repo,
               body: "🎉 Thank you for your pull request! We appreciate your contribution."
             })
+
