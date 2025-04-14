@@ -1,7 +1,6 @@
-name: Label & comment issues # The name of the workflow
+name: Label & comment issues
 
 on:
-  # This action will trigger when an issue is reopened, opened, or closed.
   issues:
     types:
       - opened
@@ -9,7 +8,7 @@ on:
       - closed
   pull_request:
     types:
-      - opened # This will trigger when a PR is opened.
+      - opened
 
 jobs:
   label_issues:
@@ -18,7 +17,6 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      # Step 1: Attach labels to the issue when it's opened or reopened
       - name: Attach label to issues
         uses: actions/github-script@v6
         with:
@@ -32,7 +30,6 @@ jobs:
               })
             }
 
-      # Step 2: Comment on new issue when it's opened
       - name: Comment on new issue
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -41,10 +38,8 @@ jobs:
             Thanks for opening this issue! We'll take a look as soon as possible.
 
   comment_on_close:
-    if: github.event_name == 'issues' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Comment on the issue when it's closed
       - name: Comment on closed issue
         uses: peter-evans/create-or-update-comment@v1
         with:
@@ -56,7 +51,6 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check if this is the first PR and then comment
       - name: Check if it's the first PR
         uses: actions/github-script@v6
         with:
@@ -67,7 +61,6 @@ jobs:
               repo: context.repo.repo
             });
 
-            // If there are no PRs or this is the first one
             if (prs.data.length === 1) {
               github.rest.issues.createComment({
                 issue_number: prNumber,
@@ -76,4 +69,3 @@ jobs:
                 body: "🎉 Congratulations on opening your first pull request! We appreciate your contribution."
               });
             }
-
