@@ -30,7 +30,9 @@ jobs:
               })
             }
 
+      # This step should only comment when the issue is opened or reopened.
       - name: Comment on new issue
+        if: github.event.action == 'opened' || github.event.action == 'reopened' # This condition ensures that the comment only happens when the issue is opened or reopened.
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -41,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Comment on closed issue
+        if: github.event.action == 'closed'  # This condition ensures that the comment happens only when the issue is closed.
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.issue.number }}
